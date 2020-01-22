@@ -13,29 +13,33 @@ func handle(upd tgbotapi.Update) {
 }
 
 func handleMessage(message *tgbotapi.Message) {
-	ret, err := runlua(message.Text)
+	ret, err := runjq(message.Text)
 	if err != nil {
-		log.Warn().Err(err).Msg("message runlua")
+		log.Warn().Err(err).Msg("message runjq")
 		return
 	}
 
-	sendMessageAsReply(message.Chat.ID, ret, message.MessageID)
+	sendMessageAsReply(message.Chat.ID, `<pre><code class="language-json">`+ret+`</code></pre>`, message.MessageID)
 }
 
 func handleInlineQuery(q *tgbotapi.InlineQuery) {
 	code := q.Query
 
-	ret, err := runlua(code)
+	ret, err := runjq(code)
 	if err != nil {
-		log.Warn().Err(err).Msg("inline runlua")
+		log.Warn().Err(err).Msg("inline runjq")
 		return
 	}
 
 	_, err = bot.AnswerInlineQuery(tgbotapi.InlineConfig{
 		InlineQueryID: q.ID,
 		Results: []interface{}{
-			tgbotapi.NewInlineQueryResultArticle("result", ret, ret),
-			tgbotapi.NewInlineQueryResultArticle("full", code+" => "+ret, code+" => "+ret),
+			tgbotapi.NewInlineQueryResultArticleHTML("result", ret,
+				`<pre><code class="language-json">`+ret+`</code></pre>`,
+			),
+			tgbotapi.NewInlineQueryResultArticleHTML("full", code+" → "+ret,
+				`<code>`+code+`</code> => <code class="language-json">`+ret+`</code>`,
+			),
 		},
 		IsPersonal: false,
 		CacheTime:  30,
