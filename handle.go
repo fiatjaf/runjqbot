@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
@@ -13,9 +15,21 @@ func handle(upd tgbotapi.Update) {
 }
 
 func handleMessage(message *tgbotapi.Message) {
-	ret, err := runjq(message.Text)
+	code := message.Text
+
+	if message.ReplyToMessage != nil {
+		var nothing interface{}
+		err := json.Unmarshal([]byte(message.ReplyToMessage.Text), &nothing)
+		if err == nil {
+			// means it's replying to a json message, so use that as input
+			code = message.ReplyToMessage.Text + " | " + code
+		}
+	}
+
+	ret, err := runjq(code)
 	if err != nil {
 		log.Warn().Err(err).Msg("message runjq")
+		sendMessageAsReply(message.Chat.ID, `<pre><code>`+err.Error()+`</code></pre>`, message.MessageID)
 		return
 	}
 
